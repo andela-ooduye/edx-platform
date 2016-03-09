@@ -1,6 +1,7 @@
 var formulaEquationPreview = {
     minDelay: 300,  // Minimum time between requests sent out.
     errorDelay: 1500  // Wait time before showing error (prevent frustration).
+    activated: false // Whether the event handler to preview input has been attached.
 };
 
 /** Setup the FormulaEquationInputs and associated javascript code. */
@@ -58,9 +59,16 @@ formulaEquationPreview.enable = function () {
             throttledRequest(inputData, this.value);
         };
 
-        $this.on("input", initializeRequest);
-        // Ask for initial preview.
-        initializeRequest.call(this);
+        if (!$this.data(formulaEquationPreview.activated)) {
+            // Hack alert: since this javascript file is loaded every time a
+            // problem with mathjax preview is loaded, we wrap this step in this
+            // condition to make sure we don't attach multiple event listeners
+            // per math input if multiple such problems are loaded on a page.
+            $this.on("input", initializeRequest);
+            $this.data(formulaEquationPreview.activated, true) //
+            // Ask for initial preview.
+            initializeRequest.call(this);
+        };
     }
 
     /**
