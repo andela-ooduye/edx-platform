@@ -1043,7 +1043,10 @@ def _progress(request, course_key, student_id):
         raise Http404
 
     # checking certificate generation configuration
-    show_generate_cert_btn = certs_api.cert_generation_enabled(course_key)
+    student_enrollment = CourseEnrollment.enrollment_mode_for_user(student, course_key)
+    show_generate_cert_btn = certs_api.cert_generation_enabled(course_key) and (
+        student_enrollment and student_enrollment.mode != CourseMode.AUDIT
+    )
 
     context = {
         'course': course,
