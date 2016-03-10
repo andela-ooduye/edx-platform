@@ -389,9 +389,18 @@ if FEATURES.get('ENABLE_CORS_HEADERS') or FEATURES.get('ENABLE_CROSS_DOMAIN_CSRF
     CROSS_DOMAIN_CSRF_COOKIE_DOMAIN = ENV_TOKENS.get('CROSS_DOMAIN_CSRF_COOKIE_DOMAIN')
 
 
-# Field overrides.  To use the IDDE feature, add
+# Field overrides. To use the IDDE feature, add
 # 'courseware.student_field_overrides.IndividualStudentOverrideProvider'.
 FIELD_OVERRIDE_PROVIDERS = tuple(ENV_TOKENS.get('FIELD_OVERRIDE_PROVIDERS', []))
+
+# Modulestore-level field overrides. These field overrides don't require student context.
+MODULESTORE_FIELD_OVERRIDE_PROVIDERS = ENV_TOKENS.get('MODULESTORE_FIELD_OVERRIDE_PROVIDERS', ())
+
+# Iterable containing dotted paths to modulestore wrappers
+MODULESTORE_WRAPPERS = ENV_TOKENS.get(
+    'MODULESTORE_WRAPPERS',
+    ['courseware.field_overrides.FieldOverrideModulestoreWrapper']
+)
 
 ############################## SECURE AUTH ITEMS ###############
 # Secret things: passwords, access keys, etc.
@@ -694,6 +703,9 @@ if FEATURES.get('INDIVIDUAL_DUE_DATES'):
 
 ##### Self-Paced Course Due Dates #####
 FIELD_OVERRIDE_PROVIDERS += (
+    'courseware.self_paced_overrides.SelfPacedDateOverrideProvider',
+)
+MODULESTORE_FIELD_OVERRIDE_PROVIDERS += (
     'courseware.self_paced_overrides.SelfPacedDateOverrideProvider',
 )
 

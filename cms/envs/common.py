@@ -417,6 +417,8 @@ MODULESTORE = {
     }
 }
 
+MODULESTORE_WRAPPERS = ()
+
 #################### Python sandbox ############################################
 
 CODE_JAIL = {

@@ -283,6 +283,10 @@ else:
 DATABASES = AUTH_TOKENS['DATABASES']
 
 MODULESTORE = convert_module_store_setting_if_needed(AUTH_TOKENS.get('MODULESTORE', MODULESTORE))
+
+# Iterable containing dotted paths to modulestore wrappers
+MODULESTORE_WRAPPERS = ENV_TOKENS.get('MODULESTORE_WRAPPERS', ())
+
 CONTENTSTORE = AUTH_TOKENS['CONTENTSTORE']
 DOC_STORE_CONFIG = AUTH_TOKENS['DOC_STORE_CONFIG']
 # Datadog for events!

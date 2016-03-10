@@ -12,6 +12,9 @@ class SelfPacedDateOverrideProvider(FieldOverrideProvider):
     A concrete implementation of
     :class:`~courseware.field_overrides.FieldOverrideProvider` which allows for
     due dates to be overridden for self-paced courses.
+
+    Consumed by FieldOverrideModulestoreWrapper, a modulestore wrapper used to
+    apply field overrides to XBlocks.
     """
     def get(self, block, name, default):
         # Remove due dates
@@ -20,9 +23,10 @@ class SelfPacedDateOverrideProvider(FieldOverrideProvider):
         # Remove release dates for course content
         if name == 'start' and block.category != 'course':
             return None
+
         return default
 
     @classmethod
-    def enabled_for(cls, course):
+    def enabled_for(cls, block):
         """This provider is enabled for self-paced courses only."""
-        return course is not None and course.self_paced and SelfPacedConfiguration.current().enabled
+        return block is not None and block.self_paced and SelfPacedConfiguration.current().enabled

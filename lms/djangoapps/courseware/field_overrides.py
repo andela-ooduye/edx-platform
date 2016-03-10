@@ -14,6 +14,7 @@ package and is used to wrap the `authored_data` when constructing an
 `LmsFieldData`.  This means overrides will be in effect for all scopes covered
 by `authored_data`, e.g. course content and settings stored in Mongo.
 """
+# pylint: disable=missing-docstring
 import threading
 
 from abc import ABCMeta, abstractmethod
@@ -24,7 +25,8 @@ from xblock.field_data import FieldData
 from xmodule.modulestore.inheritance import InheritanceMixin
 
 NOTSET = object()
-ENABLED_OVERRIDE_PROVIDERS_KEY = "courseware.field_overrides.enabled_providers.{course_id}"
+ENABLED_OVERRIDE_PROVIDERS_KEY = 'courseware.field_overrides.enabled_providers.{course_id}'
+ENABLED_MODULESTORE_OVERRIDE_PROVIDERS_KEY = 'courseware.modulestore_field_overrides.enabled_providers.{course_id}'
 
 
 def resolve_dotted(name):
@@ -44,6 +46,88 @@ def resolve_dotted(name):
             __import__(path)
             target = getattr(target, segment)
     return target
+
+
+def _lineage(block):
+    """
+    Returns an iterator over all ancestors of the given block, starting with
+    its immediate parent and ending at the root of the block tree.
+    """
+    parent = block.get_parent()
+    while parent:
+        yield parent
+        parent = parent.get_parent()
+
+
+class _OverridesDisabled(threading.local):
+    """
+    A thread local used to manage state of overrides being disabled or not.
+    """
+    disabled = ()
+
+
+_OVERRIDES_DISABLED = _OverridesDisabled()
+
+
+@contextmanager
+def disable_overrides():
+    """
+    A context manager which disables field overrides inside the context of a
+    `with` statement, allowing code to get at the `original` value of a field.
+    """
+    prev = _OVERRIDES_DISABLED.disabled
+    _OVERRIDES_DISABLED.disabled += (True,)
+    yield
+    _OVERRIDES_DISABLED.disabled = prev
+
+
+def overrides_disabled():
+    """
+    Checks to see whether overrides are disabled in the current context.
+    Returns a boolean value.  See `disable_overrides`.
+    """
+    return bool(_OVERRIDES_DISABLED.disabled)
+
+
+class FieldOverrideProvider(object):
+    """
+    Abstract class which defines the interface that a `FieldOverrideProvider`
+    must provide.  In general, providers should derive from this class, but
+    it's not strictly necessary as long as they correctly implement this
+    interface.
+
+    A `FieldOverrideProvider` implementation is only responsible for looking up
+    field overrides. To set overrides, there will be a domain specific API for
+    the concrete override implementation being used.
+    """
+    __metaclass__ = ABCMeta
+
+    def __init__(self, user):
+        self.user = user
+
+    @abstractmethod
+    def get(self, block, name, default):  # pragma no cover
+        """
+        Look for an override value for the field named `name` in `block`.
+        Returns the overridden value or `default` if no override is found.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def enabled_for(self, course):  # pragma no cover
+        """
+        Return True if this provider should be enabled for a given course,
+        and False otherwise.
+
+        Concrete implementations are responsible for implementing this method.
+
+        Arguments:
+          course (CourseModule or None)
+
+        Returns:
+          bool
+        """
+        return False
 
 
 class OverrideFieldData(FieldData):
@@ -171,83 +255,84 @@ class OverrideFieldData(FieldData):
         return self.fallback.default(block, name)
 
 
-class _OverridesDisabled(threading.local):
+class OverrideModulestoreFieldData(OverrideFieldData):
+    """Apply field data overrides at the modulestore level. No student context required."""
+
+    @classmethod
+    def wrap(cls, block, field_data):  # pylint: disable=arguments-differ
+        if cls.provider_classes is None:
+            cls.provider_classes = [
+                resolve_dotted(name) for name in settings.MODULESTORE_FIELD_OVERRIDE_PROVIDERS
+            ]
+
+        if block:
+            enabled_providers = cls._providers_for_block(block)
+            if enabled_providers:
+                return cls(field_data, enabled_providers)
+
+        return field_data
+
+    @classmethod
+    def _providers_for_block(cls, block):
+        course_id = unicode(block.location.course_key)
+        cache_key = ENABLED_MODULESTORE_OVERRIDE_PROVIDERS_KEY.format(course_id=course_id)
+
+        request_cache = RequestCache.get_request_cache()
+        enabled_providers = request_cache.data.get(cache_key)
+
+        if enabled_providers is None:
+            enabled_providers = [
+                provider_class for provider_class in cls.provider_classes if provider_class.enabled_for(block)
+            ]
+            request_cache.data[cache_key] = enabled_providers
+
+        return enabled_providers
+
+    def __init__(self, fallback, providers):
+        super(OverrideModulestoreFieldData, self).__init__(None, fallback, providers)
+
+
+class FieldOverrideModulestoreWrapper(object):
+    """Apply field overrides to XBlocks.
+
+    Extends read-only functionality.
     """
-    A thread local used to manage state of overrides being disabled or not.
-    """
-    disabled = ()
 
+    def __init__(self, modulestore):
+        """Wrap the provided modulestore"""
+        self.__dict__['_modulestore'] = modulestore
 
-_OVERRIDES_DISABLED = _OverridesDisabled()
+    def __getattr__(self, name):
+        """Look up missing attributes on the wrapped modulestore"""
+        return getattr(self._modulestore, name)
 
+    def __setattr__(self, name, value):
+        """Set attributes on the wrapped modulestore"""
+        setattr(self._modulestore, name, value)
 
-@contextmanager
-def disable_overrides():
-    """
-    A context manager which disables field overrides inside the context of a
-    `with` statement, allowing code to get at the `original` value of a field.
-    """
-    prev = _OVERRIDES_DISABLED.disabled
-    _OVERRIDES_DISABLED.disabled += (True,)
-    yield
-    _OVERRIDES_DISABLED.disabled = prev
+    def __delattr__(self, name):
+        """Delete attributes on the wrapped modulestore"""
+        delattr(self._modulestore, name)
 
+    def _wrap(self, block):
+        """Apply XBlock field data overrides."""
+        block._field_data = OverrideModulestoreFieldData.wrap(block, block._field_data)  # pylint: disable=protected-access
+        return block
 
-def overrides_disabled():
-    """
-    Checks to see whether overrides are disabled in the current context.
-    Returns a boolean value.  See `disable_overrides`.
-    """
-    return bool(_OVERRIDES_DISABLED.disabled)
+    def get_item(self, usage_key, depth=0, **kwargs):
+        return self._wrap(
+            self._modulestore.get_item(usage_key, depth, **kwargs)
+        )
 
+    def get_items(self, course_key, **kwargs):
+        items = [self._wrap(item) for item in self._modulestore.get_items(course_key, **kwargs)]
+        return items
 
-class FieldOverrideProvider(object):
-    """
-    Abstract class which defines the interface that a `FieldOverrideProvider`
-    must provide.  In general, providers should derive from this class, but
-    it's not strictly necessary as long as they correctly implement this
-    interface.
+    def get_course(self, course_key, depth=0, **kwargs):
+        return self._wrap(
+            self._modulestore.get_course(course_key, depth=depth, **kwargs)
+        )
 
-    A `FieldOverrideProvider` implementation is only responsible for looking up
-    field overrides. To set overrides, there will be a domain specific API for
-    the concrete override implementation being used.
-    """
-    __metaclass__ = ABCMeta
-
-    def __init__(self, user):
-        self.user = user
-
-    @abstractmethod
-    def get(self, block, name, default):  # pragma no cover
-        """
-        Look for an override value for the field named `name` in `block`.
-        Returns the overridden value or `default` if no override is found.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def enabled_for(self, course):  # pragma no cover
-        """
-        Return True if this provider should be enabled for a given course,
-        and False otherwise.
-
-        Concrete implementations are responsible for implementing this method.
-
-        Arguments:
-          course (CourseModule or None)
-
-        Returns:
-          bool
-        """
-        return False
-
-
-def _lineage(block):
-    """
-    Returns an iterator over all ancestors of the given block, starting with
-    its immediate parent and ending at the root of the block tree.
-    """
-    parent = block.get_parent()
-    while parent:
-        yield parent
-        parent = parent.get_parent()
+    def get_courses(self, **kwargs):
+        courses = [self._wrap(course) for course in self._modulestore.get_courses(**kwargs)]
+        return courses

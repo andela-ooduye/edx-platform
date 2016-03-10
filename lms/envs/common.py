@@ -2639,6 +2639,10 @@ CHECKPOINT_PATTERN = r'(?P<checkpoint_name>[^/]+)'
 # this setting.
 FIELD_OVERRIDE_PROVIDERS = ()
 
+MODULESTORE_FIELD_OVERRIDE_PROVIDERS = ()
+
+MODULESTORE_WRAPPERS = ()
+
 # PROFILE IMAGE CONFIG
 # WARNING: Certain django storage backends do not support atomic
 # file overwrites (including the default, OverwriteStorage) - instead
