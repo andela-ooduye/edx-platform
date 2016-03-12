@@ -3,14 +3,15 @@
     define([
         'gettext', 'jquery', 'underscore', 'backbone', 'js/views/fields',
         'text!templates/fields/field_image.underscore',
+        'edx-ui-toolkit/js/utils/html-utils',
         'backbone-super', 'jquery.fileupload'
-    ], function (gettext, $, _, Backbone, FieldViews, field_image_template) {
+    ], function (gettext, $, _, Backbone, FieldViews, fieldImageTemplate, HtmlUtils) {
 
         var ImageFieldView = FieldViews.FieldView.extend({
 
             fieldType: 'image',
 
-            fieldTemplate: field_image_template,
+            fieldTemplate: fieldImageTemplate,
             uploadButtonSelector: '.upload-button-input',
 
             titleAdd: gettext("Upload an image"),
@@ -70,7 +71,7 @@
             },
 
             showErrorMessage: function (message) {
-                return message;
+                throw('showErrorMessage not implemented for error: ' + message);
             },
 
             imageUrl: function () {
@@ -144,10 +145,10 @@
                 this.render();
             },
 
-            imageChangeFailed: function (e, data) {
+            imageChangeFailed: function () {
             },
 
-            showImageChangeFailedMessage: function (status, responseText) {
+            showImageChangeFailedMessage: function () {
             },
 
             fileSelected: function (e, data) {
@@ -164,7 +165,7 @@
                 if (imageBytes < this.options.imageMinBytes) {
                     humanReadableSize = this.bytesToHumanReadable(this.options.imageMinBytes);
                     this.showErrorMessage(
-                        interpolate_text(
+                        StringUtils.interpolate(
                             gettext("The file must be at least {size} in size."), {size: humanReadableSize}
                         )
                     );
@@ -172,7 +173,7 @@
                 } else if (imageBytes > this.options.imageMaxBytes) {
                     humanReadableSize = this.bytesToHumanReadable(this.options.imageMaxBytes);
                     this.showErrorMessage(
-                        interpolate_text(
+                        StringUtils.interpolate(
                             gettext("The file must be smaller than {size} in size."), {size: humanReadableSize}
                         )
                     );
@@ -208,9 +209,9 @@
             onBeforeUnload: function () {
                 var status = this.getCurrentStatus();
                 if (status === 'uploading') {
-                    return gettext("Upload is in progress. To avoid errors, stay on this page until the process is complete.");
+                    return gettext('Upload is in progress. To avoid errors, stay on this page until the process is complete.');  // jshint ignore:line
                 } else if (status === 'removing') {
-                    return gettext("Removal is in progress. To avoid errors, stay on this page until the process is complete.");
+                    return gettext('Removal is in progress. To avoid errors, stay on this page until the process is complete.');  // jshint ignore:line
                 }
             },
 

@@ -1,7 +1,8 @@
 ;(function (define, undefined) {
     'use strict';
     define([
-        'gettext', 'jquery', 'underscore', 'backbone', 
+        'gettext', 'jquery', 'underscore', 'backbone',
+        'edx-ui-toolkit/js/utils/html-utils',
         'text!templates/fields/field_readonly.underscore',
         'text!templates/fields/field_dropdown.underscore',
         'text!templates/fields/field_link.underscore',
@@ -9,6 +10,7 @@
         'text!templates/fields/field_textarea.underscore',
         'backbone-super'
     ], function (gettext, $, _, Backbone,
+                 HtmlUtils,
                  field_readonly_template,
                  field_dropdown_template,
                  field_link_template,
@@ -30,12 +32,12 @@
             tagName: 'div',
 
             indicators: {
-                'canEdit': '<i class="icon fa fa-pencil message-can-edit" aria-hidden="true"></i><span class="sr">' + gettext("Editable") + '</span>',
-                'error': '<i class="fa fa-exclamation-triangle message-error" aria-hidden="true"></i><span class="sr">' + gettext("Error") + '</span>',
-                'validationError': '<i class="fa fa-exclamation-triangle message-validation-error" aria-hidden="true"></i><span class="sr">' + gettext("Validation Error") + '</span>',
-                'inProgress': '<i class="fa fa-spinner fa-pulse message-in-progress" aria-hidden="true"></i><span class="sr">' + gettext("In Progress") + '</span>',
-                'success': '<i class="fa fa-check message-success" aria-hidden="true"></i><span class="sr">' + gettext("Success") + '</span>',
-                'plus': '<i class="fa fa-plus placeholder" aria-hidden="true"></i><span class="sr">' + gettext("Placeholder")+ '</span>'
+                'canEdit': '<i class="icon fa fa-pencil message-can-edit" aria-hidden="true"></i><span class="sr">' + gettext("Editable") + '</span>',  // jshint ignore:line
+                'error': '<i class="fa fa-exclamation-triangle message-error" aria-hidden="true"></i><span class="sr">' + gettext("Error") + '</span>',  // jshint ignore:line
+                'validationError': '<i class="fa fa-exclamation-triangle message-validation-error" aria-hidden="true"></i><span class="sr">' + gettext("Validation Error") + '</span>',  // jshint ignore:line
+                'inProgress': '<i class="fa fa-spinner fa-pulse message-in-progress" aria-hidden="true"></i><span class="sr">' + gettext("In Progress") + '</span>',  // jshint ignore:line
+                'success': '<i class="fa fa-check message-success" aria-hidden="true"></i><span class="sr">' + gettext("Success") + '</span>',  // jshint ignore:line
+                'plus': '<i class="fa fa-plus placeholder" aria-hidden="true"></i><span class="sr">' + gettext("Placeholder")+ '</span>'  // jshint ignore:line
             },
 
             messages: {
@@ -68,7 +70,7 @@
             },
 
             title: function (text) {
-                return this.$('.u-field-title').html(text);
+                return this.$('.u-field-title').html(HtmlUtils.escape(text));
             },
 
             getMessage: function(message_status) {
@@ -85,7 +87,7 @@
                     message = this.helpMessage;
                 }
                 this.$('.u-field-message-notification').html('');
-                this.$('.u-field-message-help').html(message);
+                this.$('.u-field-message-help').html(HtmlUtils.escape(message));
             },
 
             getNotificationMessage: function() {
@@ -94,7 +96,7 @@
 
             showNotificationMessage: function(message) {
                 this.$('.u-field-message-help').html('');
-                this.$('.u-field-message-notification').html(message);
+                this.$('.u-field-message-notification').html(HtmlUtils.escape(message));
             },
 
             showCanEditMessage: function(show) {
@@ -123,7 +125,8 @@
                 this.lastSuccessMessageContext = context;
 
                 setTimeout(function () {
-                    if ((context === view.lastSuccessMessageContext) && (view.getNotificationMessage() === successMessage)) {
+                    if ((context === view.lastSuccessMessageContext) &&
+                        (view.getNotificationMessage() === successMessage)) {
                         if (view.editable === 'toggle') {
                             view.showCanEditMessage(true);
                         } else {
@@ -137,9 +140,7 @@
                 if (xhr.status === 400) {
                     try {
                         var errors = JSON.parse(xhr.responseText),
-                            validationErrorMessage = _.escape(
-                                errors.field_errors[this.options.valueAttribute].user_message
-                            ),
+                            validationErrorMessage = errors.field_errors[this.options.valueAttribute].user_message,
                             message = this.indicators.validationError + validationErrorMessage;
                         this.showNotificationMessage(message);
                     } catch (error) {
@@ -275,7 +276,7 @@
             },
 
             updateValueInField: function () {
-                this.$('.u-field-value ').html(_.escape(this.modelValue()));
+                this.$('.u-field-value ').html(HtmlUtils.escape(this.modelValue()));
             }
         });
 
@@ -335,7 +336,9 @@
             },
 
             initialize: function (options) {
-                _.bindAll(this, 'render', 'optionForValue', 'fieldValue', 'displayValue', 'updateValueInField', 'saveValue');
+                _.bindAll(this, 'render', 'optionForValue', 'fieldValue', 'displayValue',
+                    'updateValueInField', 'saveValue'
+                );
                 this._super(options);
 
                 this.listenTo(this.model, "change:" + this.options.valueAttribute, this.updateValueInField);
@@ -406,7 +409,7 @@
                     value = this.options.placeholderValue || '';
                 }
                 this.$('.u-field-value').attr('aria-label', this.options.title);
-                this.$('.u-field-value-readonly').html(_.escape(value));
+                this.$('.u-field-value-readonly').html(HtmlUtils.escape(value));
 
                 if (this.mode === 'display') {
                     this.updateDisplayModeClass();
@@ -476,7 +479,8 @@
             },
 
             render: function () {
-                var value = this.modelValue();
+                var value = this.modelValue(),
+                    title = this.options.title;
                 if (this.mode === 'display') {
                     value = value || this.options.placeholderValue;
                 }
@@ -491,7 +495,7 @@
                     placeholderValue: this.options.placeholderValue
                 }));
                 this.delegateEvents();
-                this.title((this.modelValue() || this.mode === 'edit') ? this.options.title : this.indicators['plus'] + this.options.title);
+                this.title((this.modelValue() || this.mode === 'edit') ? title : this.indicators.plus + title);
 
                 if (this.editable === 'toggle') {
                     this.showCanEditMessage(this.mode === 'display');
@@ -541,7 +545,7 @@
             },
 
             modelValueIsSet: function() {
-                return !(this.modelValue() === '');
+                return this.modelValue() !== '';
             },
 
             showEditMode: function(render) {
