@@ -6,22 +6,23 @@ from datetime import timedelta
 
 from django.test import TestCase
 from django.utils.timezone import now
-from oauth2_provider import models
+from provider.oauth2 import models
+from provider import constants
 
 from student.tests.factories import UserFactory
 
-from ..adapters import  DOTAdapter
+from ..adapters import  DOPAdapter
 
 
-class DOTAdapterTestCase(TestCase):
+class DOPAdapterTestCase(TestCase):
     """
     Test class for DOTAdapter.
     """
 
-    adapter = DOTAdapter()
+    adapter = DOPAdapter()
 
     def setUp(self):
-        super(DOTAdapterTestCase, self).setUp()
+        super(DOPAdapterTestCase, self).setUp()
         self.user = UserFactory()
         self.public_client = self.adapter.create_public_client(
             name='app',
@@ -34,35 +35,35 @@ class DOTAdapterTestCase(TestCase):
         )
 
     def test_create_confidential_client(self):
-        self.assertIsInstance(self.confidential_client, models.Application)
+        self.assertIsInstance(self.confidential_client, models.Client)
         self.assertEqual(self.confidential_client.client_id, 'confidential-client-id')
-        self.assertEqual(self.confidential_client.client_type, models.Application.CLIENT_CONFIDENTIAL)
+        self.assertEqual(self.confidential_client.client_type, constants.CONFIDENTIAL)
 
     def test_create_public_client(self):
-        self.assertIsInstance(self.public_client, models.Application)
+        self.assertIsInstance(self.public_client, models.Client)
         self.assertEqual(self.public_client.client_id, 'public-client-id')
-        self.assertEqual(self.public_client.client_type, models.Application.CLIENT_PUBLIC)
+        self.assertEqual(self.public_client.client_type, constants.PUBLIC)
 
     def test_get_client(self):
-        client = self.adapter.get_client(client_type=models.Application.CLIENT_CONFIDENTIAL)
-        self.assertIsInstance(client, models.Application)
-        self.assertEqual(client.client_type, models.Application.CLIENT_CONFIDENTIAL)
+        client = self.adapter.get_client(client_type=constants.CONFIDENTIAL)
+        self.assertIsInstance(client, models.Client)
+        self.assertEqual(client.client_type, constants.CONFIDENTIAL)
 
     def test_get_client_not_found(self):
-        with self.assertRaises(models.Application.DoesNotExist):
+        with self.assertRaises(models.Client.DoesNotExist):
             self.adapter.get_client(client_id='not-found')
 
     def test_get_client_for_token(self):
         token = models.AccessToken(
             user=self.user,
-            application=self.public_client,
+            client=self.public_client,
         )
         self.assertEqual(self.adapter.get_client_for_token(token), self.public_client)
 
     def test_get_access_token(self):
         token = models.AccessToken.objects.create(
             token='token-id',
-            application=self.public_client,
+            client=self.public_client,
             user=self.user,
             expires=now() + timedelta(days=30),
         )

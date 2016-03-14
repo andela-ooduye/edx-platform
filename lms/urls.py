@@ -820,9 +820,14 @@ if settings.FEATURES.get('AUTH_USE_OPENID_PROVIDER'):
 
 if settings.FEATURES.get('ENABLE_OAUTH2_PROVIDER'):
     urlpatterns += (
+        # These URLs dispatch to django-oauth-toolkit or django-oauth2-provider as appropriate.
         url(r'^oauth2/', include('lms.djangoapps.oauth_dispatch.urls')),
+        # These URLs contain the django-oauth2-provider default behavior (for views that have not
+        # been converted to dispatching views
         url(r'^oauth2/', include('edx_oauth2_provider.urls', namespace='oauth2')),
-        url(r'^o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
+        # These are the standard django-oauth-toolkit views.  They should not be used publicly,
+        # but exist for code that requires the oauth2_provider namespace.
+        url(r'^_o/', include('oauth2_provider.urls', namespace='oauth2_provider')),
     )
 
 if settings.FEATURES.get('ENABLE_LMS_MIGRATION'):
@@ -889,14 +894,6 @@ if settings.FEATURES.get('ENABLE_THIRD_PARTY_AUTH'):
 
 # OAuth token exchange
 if settings.FEATURES.get('ENABLE_OAUTH2_PROVIDER'):
-    if settings.FEATURES.get('ENABLE_THIRD_PARTY_AUTH'):
-        urlpatterns += (
-            url(
-                r'^oauth2/exchange_access_token/(?P<backend>[^/]+)/$',
-                auth_exchange.views.DOPAccessTokenExchangeView.as_view(),
-                name="exchange_access_token_old"
-            ),
-        )
     urlpatterns += (
         url(
             r'^oauth2/login/$',

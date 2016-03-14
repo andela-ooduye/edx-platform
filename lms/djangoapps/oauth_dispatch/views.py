@@ -16,7 +16,9 @@ from . import adapters
 
 class _DispatchingView(View):
     """
-    Base class that route views to the appropriate provider view.
+    Base class that route views to the appropriate provider view.  The default
+    behavior routes based on client_id, but this can be overridden by redefining
+    `select_backend()` if particular views need different behavior.
     """
     # pylint: disable=no-member
 
