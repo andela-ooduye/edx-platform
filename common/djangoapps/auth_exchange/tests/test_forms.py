@@ -16,7 +16,7 @@ from third_party_auth.tests.utils import ThirdPartyOAuthTestMixinFacebook, Third
 
 from ..forms import AccessTokenExchangeForm
 from .utils import AccessTokenExchangeTestMixin
-from . import mixins
+from .mixins import DOPAdapterMixin, DOTAdapterMixin
 
 
 class AccessTokenExchangeFormTest(AccessTokenExchangeTestMixin):
@@ -51,14 +51,15 @@ class AccessTokenExchangeFormTest(AccessTokenExchangeTestMixin):
 # This is necessary because cms does not implement third party auth
 @unittest.skipUnless(settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH"), "third party auth not enabled")
 @httpretty.activate
-class AccessTokenExchangeFormTestFacebook(
-        mixins.DOPAdapterMixin,
+class DOPAccessTokenExchangeFormTestFacebook(
+        DOPAdapterMixin,
         AccessTokenExchangeFormTest,
         ThirdPartyOAuthTestMixinFacebook,
         TestCase
 ):
     """
-    Tests for AccessTokenExchangeForm used with Facebook
+    Tests for AccessTokenExchangeForm used with Facebook, tested against
+    django-oauth2-provider (DOP).
     """
     pass
 
@@ -66,13 +67,46 @@ class AccessTokenExchangeFormTestFacebook(
 # This is necessary because cms does not implement third party auth
 @unittest.skipUnless(settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH"), "third party auth not enabled")
 @httpretty.activate
-class AccessTokenExchangeFormTestGoogle(
-        mixins.DOPAdapterMixin,
+class DOTAccessTokenExchangeFormTestFacebook(
+        DOTAdapterMixin,
+        AccessTokenExchangeFormTest,
+        ThirdPartyOAuthTestMixinFacebook,
+        TestCase
+):
+    """
+    Tests for AccessTokenExchangeForm used with Facebook, tested against
+    django-oauth-toolkit (DOT).
+    """
+    pass
+
+
+# This is necessary because cms does not implement third party auth
+@unittest.skipUnless(settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH"), "third party auth not enabled")
+@httpretty.activate
+class DOPAccessTokenExchangeFormTestGoogle(
+        DOPAdapterMixin,
         AccessTokenExchangeFormTest,
         ThirdPartyOAuthTestMixinGoogle,
         TestCase
 ):
     """
-    Tests for AccessTokenExchangeForm used with Google
+    Tests for AccessTokenExchangeForm used with Google, tested against
+    django-oauth2-provider (DOP).
+    """
+    pass
+
+
+# This is necessary because cms does not implement third party auth
+@unittest.skipUnless(settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH"), "third party auth not enabled")
+@httpretty.activate
+class DOTAccessTokenExchangeFormTestGoogle(
+        DOTAdapterMixin,
+        AccessTokenExchangeFormTest,
+        ThirdPartyOAuthTestMixinGoogle,
+        TestCase
+):
+    """
+    Tests for AccessTokenExchangeForm used with Google, tested against
+    django-oauth-toolkit (DOT).
     """
     pass

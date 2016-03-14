@@ -108,7 +108,30 @@ class DOTAccessTokenExchangeView(AccessTokenExchangeBase, TokenView):
             'error_description': 'Only POST requests allowed.',
         })
 
-    def populate_request(self, request, user, scope, client):
+    def get_access_token(self, request, user, scope, client):
+        try:
+            return dot_models.AccessToken.objects.get(
+                user=user,
+                application=client,
+                scope=scope,
+                expires__gt=datetime.utcnow()
+            )
+        except dot_models.AccessToken.DoesNotExist:
+            return self.create_access_token(request, user, scope, client)
+
+    def create_access_token(self, request, user, scope, client):
+        _days = 24 * 60 * 60
+        token_generator = BearerToken(
+            expires_in=settings.OAUTH_EXPIRE_PUBLIC_CLIENT_DAYS * _days,
+            request_validator=OAuth2Validator()
+        )
+        self._populate_request(request, user, scope, client)
+        return token_generator.create_token(request, refresh_token=True)
+
+    def access_token_response(self, token):
+        return Response(data=token)
+
+    def _populate_request(self, request, user, scope, client):
         """
         django-oauth-toolkit expects certain non-standard attributes to
         be present on the request object.  This function modifies the
@@ -130,29 +153,6 @@ class DOTAccessTokenExchangeView(AccessTokenExchangeBase, TokenView):
         Return an error response consisting of the errors in the form
         """
         return Response(status=400, data=form_errors)
-
-    def exchange_access_token(self, request, user, scope, client):
-        """
-        Exchange third party credentials for an edx access token, saved in
-        django-oauth-toolkit and return a serialized access token response.
-        """
-        _days = 24 * 60 * 60
-        self.populate_request(request, user, scope, client)
-        token = None
-        if constants.SINGLE_ACCESS_TOKEN:
-            token = dot_models.AccessToken.objects.filter(
-                user=user,
-                application=client,
-                scope=scope,
-                expires__gt=datetime.utcnow()
-            ).first()
-        if not token:
-            token_generator = BearerToken(
-                expires_in=settings.OAUTH_EXPIRE_PUBLIC_CLIENT_DAYS * _days,
-                request_validator=OAuth2Validator()
-            )
-            token = token_generator.create_token(request, refresh_token=True)
-        return Response(data=token)
 
 
 class LoginWithAccessTokenView(APIView):

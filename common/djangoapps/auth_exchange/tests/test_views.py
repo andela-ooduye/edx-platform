@@ -19,7 +19,7 @@ from provider.oauth2.models import AccessToken, Client
 
 from student.tests.factories import UserFactory
 from third_party_auth.tests.utils import ThirdPartyOAuthTestMixinFacebook, ThirdPartyOAuthTestMixinGoogle
-from . import mixins
+from .mixins import DOPAdapterMixin, DOTAdapterMixin
 from .utils import AccessTokenExchangeTestMixin
 
 
@@ -47,7 +47,7 @@ class AccessTokenExchangeViewTest(AccessTokenExchangeTestMixin):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/json")
         content = json.loads(response.content)
-        self.assertEqual(set(content.keys()), self.oauth2_adapter.get_token_response_keys())
+        self.assertEqual(set(content.keys()), self.get_token_response_keys())
         self.assertEqual(content["token_type"], "Bearer")
         self.assertLessEqual(
             timedelta(seconds=int(content["expires_in"])),
@@ -58,9 +58,6 @@ class AccessTokenExchangeViewTest(AccessTokenExchangeTestMixin):
         self.assertEqual(token.user, self.user)
         self.assertEqual(self.oauth2_adapter.get_client_for_token(token), self.oauth_client)
         self.assertEqual(self.oauth2_adapter.get_token_scope_names(token), expected_scopes)
-
-    def _create_client(self):
-        return self.oauth2_adapter.create_public_client(self.user, self.client_id)
 
     def test_single_access_token(self):
         def extract_token(response):
@@ -102,7 +99,7 @@ class AccessTokenExchangeViewTest(AccessTokenExchangeTestMixin):
 @unittest.skipUnless(settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH"), "third party auth not enabled")
 @httpretty.activate
 class DOPAccessTokenExchangeViewTestFacebook(
-        mixins.DOPAdapterMixin,
+        DOPAdapterMixin,
         AccessTokenExchangeViewTest,
         ThirdPartyOAuthTestMixinFacebook,
         TestCase
@@ -116,7 +113,7 @@ class DOPAccessTokenExchangeViewTestFacebook(
 @unittest.skipUnless(settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH"), "third party auth not enabled")
 @httpretty.activate
 class DOTAccessTokenExchangeViewTestFacebook(
-        mixins.DOTAdapterMixin,
+        DOTAdapterMixin,
         AccessTokenExchangeViewTest,
         ThirdPartyOAuthTestMixinFacebook,
         TestCase
@@ -131,7 +128,7 @@ class DOTAccessTokenExchangeViewTestFacebook(
 @unittest.skipUnless(settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH"), "third party auth not enabled")
 @httpretty.activate
 class DOPAccessTokenExchangeViewTestGoogle(
-        mixins.DOPAdapterMixin,
+        DOPAdapterMixin,
         AccessTokenExchangeViewTest,
         ThirdPartyOAuthTestMixinGoogle,
         TestCase
@@ -147,7 +144,7 @@ class DOPAccessTokenExchangeViewTestGoogle(
 @unittest.skipUnless(settings.FEATURES.get("ENABLE_THIRD_PARTY_AUTH"), "third party auth not enabled")
 @httpretty.activate
 class DOTAccessTokenExchangeViewTestGoogle(
-        mixins.DOTAdapterMixin,
+        DOTAdapterMixin,
         AccessTokenExchangeViewTest,
         ThirdPartyOAuthTestMixinGoogle,
         TestCase

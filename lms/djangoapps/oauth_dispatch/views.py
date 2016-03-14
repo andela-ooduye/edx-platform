@@ -27,7 +27,6 @@ class _DispatchingView(View):
         """
         Dispatch the request to the selected backend's view.
         """
-        print "Dispatching view"
         backend = self.select_backend(request)
         view = self.get_view_for_backend(backend)
         return view(request, *args, **kwargs)

@@ -36,6 +36,12 @@ class AccessTokenExchangeTestMixin(ThirdPartyOAuthTestMixin):
         """
         raise NotImplementedError()
 
+    def _create_client(self):
+        """
+        Create an oauth2 client application using class defaults.
+        """
+        return self.create_public_client(self.user, self.client_id)
+
     def test_minimal(self):
         self._setup_provider_response(success=True)
         self._assert_success(self.data, expected_scopes=[])
