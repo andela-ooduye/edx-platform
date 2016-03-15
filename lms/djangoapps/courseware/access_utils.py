@@ -4,7 +4,6 @@ It allows us to share code between access.py and block transformers.
 """
 
 from datetime import datetime, timedelta
-import re
 from django.conf import settings
 from django.utils.timezone import UTC
 from logging import getLogger
@@ -80,4 +79,4 @@ def in_preview_mode():
     """
     hostname = get_current_request_hostname()
     preview_lms_base = settings.FEATURES.get('PREVIEW_LMS_BASE', None)
-    return bool(preview_lms_base and hostname and re.match(preview_lms_base.split(':')[0], hostname))
+    return bool(preview_lms_base and hostname and hostname.split(':')[0] == preview_lms_base.split(':')[0])
