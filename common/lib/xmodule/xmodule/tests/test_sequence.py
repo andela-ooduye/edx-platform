@@ -1,13 +1,13 @@
 """
 Tests for sequence module.
 """
-
+# pylint: disable=no-member
 from mock import Mock
 from xblock.reference.user_service import XBlockUser, UserService
 from xmodule.tests import get_test_system
 from xmodule.tests.xml import XModuleXmlImportTest
 from xmodule.tests.xml import factories as xml
-from xmodule.x_module import STUDENT_VIEW, AUTHOR_VIEW
+from xmodule.x_module import STUDENT_VIEW
 from xmodule.seq_module import _compute_next_url
 
 
@@ -29,7 +29,7 @@ class SequenceBlockTestCase(XModuleXmlImportTest):
     Tests for the Sequence Module.
     """
     def setUp(self):
-        super(XModuleXmlImportTest, self).setUp()
+        super(SequenceBlockTestCase, self).setUp()
 
         course_xml = self._set_up_course_xml()
         self.course = self.process_xml(course_xml)
@@ -50,7 +50,7 @@ class SequenceBlockTestCase(XModuleXmlImportTest):
         course = xml.CourseFactory.build()
 
         chapter_1 = xml.ChapterFactory.build(parent=course)  # has 2 child sequences
-        chapter_2 = xml.ChapterFactory.build(parent=course)  # has 0 child sequences
+        xml.ChapterFactory.build(parent=course)  # has 0 child sequences
         chapter_3 = xml.ChapterFactory.build(parent=course)  # has 1 child sequence
         chapter_4 = xml.ChapterFactory.build(parent=course)  # has 2 child sequences
 
@@ -60,8 +60,8 @@ class SequenceBlockTestCase(XModuleXmlImportTest):
         xml.SequenceFactory.build(parent=chapter_4)
         xml.SequenceFactory.build(parent=chapter_4)
 
-        vertical_1_1_A = xml.VerticalFactory.build(parent=sequence_1_1)
-        xml.ProblemFactory.build(parent=vertical_1_1_A)
+        vertical_1_1 = xml.VerticalFactory.build(parent=sequence_1_1)
+        xml.ProblemFactory.build(parent=vertical_1_1)
 
         return course
 
@@ -73,9 +73,9 @@ class SequenceBlockTestCase(XModuleXmlImportTest):
 
         self._set_up_module_system(block)
 
-        block.xmodule_runtime._services['bookmarks'] = Mock()
-        block.xmodule_runtime._services['user'] = StubUserService()
-        block.xmodule_runtime.xmodule_instance = block._xmodule
+        block.xmodule_runtime._services['bookmarks'] = Mock()  # pylint: disable=protected-access
+        block.xmodule_runtime._services['user'] = StubUserService()  # pylint: disable=protected-access
+        block.xmodule_runtime.xmodule_instance = block._xmodule  # pylint: disable=protected-access
         block.parent = parent.location
         return block
 
@@ -99,11 +99,11 @@ class SequenceBlockTestCase(XModuleXmlImportTest):
     def test_compute_next_url(self):
 
         for sequence, parent, expected_next_sequence_location in [
-            (self.sequence_1_1, self.chapter_1, self.sequence_1_2.location),
-            (self.sequence_1_2, self.chapter_1, self.chapter_2.location),
-            (self.sequence_3_1, self.chapter_3, self.chapter_4.location),
-            (self.sequence_4_1, self.chapter_4, self.sequence_4_2.location),
-            (self.sequence_4_2, self.chapter_4, None),
+                (self.sequence_1_1, self.chapter_1, self.sequence_1_2.location),
+                (self.sequence_1_2, self.chapter_1, self.chapter_2.location),
+                (self.sequence_3_1, self.chapter_3, self.chapter_4.location),
+                (self.sequence_4_1, self.chapter_4, self.sequence_4_2.location),
+                (self.sequence_4_2, self.chapter_4, None),
         ]:
             actual_next_sequence_location = _compute_next_url(
                 sequence.location,
