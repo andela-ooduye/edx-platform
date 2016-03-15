@@ -19,9 +19,9 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from edx_oauth2_provider.constants import SCOPE_VALUE_DICT
 from provider import constants
-from provider.oauth2.views import AccessTokenView
+from provider.oauth2.views import AccessTokenView as DOPAccessTokenView
 from oauth2_provider.oauth2_validators import OAuth2Validator
-from oauth2_provider.views.base import TokenView
+from oauth2_provider.views.base import TokenView as DOTAccessTokenView
 from oauth2_provider import models as dot_models
 from oauthlib.oauth2.rfc6749.tokens import BearerToken
 from rest_framework import permissions
@@ -72,7 +72,7 @@ class AccessTokenExchangeBase(APIView):
         raise NotImplementedError()
 
 
-class DOPAccessTokenExchangeView(AccessTokenExchangeBase, AccessTokenView):
+class DOPAccessTokenExchangeView(AccessTokenExchangeBase, DOPAccessTokenView):
     """
     View for token exchange from 3rd party OAuth access token to 1st party
     OAuth access token.  Uses django-oauth2-provider (DOP) to manage access
@@ -93,7 +93,7 @@ class DOPAccessTokenExchangeView(AccessTokenExchangeBase, AccessTokenView):
         return self.access_token_response(edx_access_token)
 
 
-class DOTAccessTokenExchangeView(AccessTokenExchangeBase, TokenView):
+class DOTAccessTokenExchangeView(AccessTokenExchangeBase, DOTAccessTokenView):
     """
     View for token exchange from 3rd party OAuth access token to 1st party
     OAuth access token.  Uses django-oauth-toolkit (DOT) to manage access
@@ -109,6 +109,9 @@ class DOTAccessTokenExchangeView(AccessTokenExchangeBase, TokenView):
         })
 
     def get_access_token(self, request, user, scope, client):
+        """
+        Return an access token, using an existing token, if available.
+        """
         try:
             return dot_models.AccessToken.objects.get(
                 user=user,
@@ -120,6 +123,9 @@ class DOTAccessTokenExchangeView(AccessTokenExchangeBase, TokenView):
             return self.create_access_token(request, user, scope, client)
 
     def create_access_token(self, request, user, scope, client):
+        """
+        Create and return a new access token.
+        """
         _days = 24 * 60 * 60
         token_generator = BearerToken(
             expires_in=settings.OAUTH_EXPIRE_PUBLIC_CLIENT_DAYS * _days,
@@ -129,6 +135,9 @@ class DOTAccessTokenExchangeView(AccessTokenExchangeBase, TokenView):
         return token_generator.create_token(request, refresh_token=True)
 
     def access_token_response(self, token):
+        """
+        Wrap an access token in an appropriate response
+        """
         return Response(data=token)
 
     def _populate_request(self, request, user, scope, client):
