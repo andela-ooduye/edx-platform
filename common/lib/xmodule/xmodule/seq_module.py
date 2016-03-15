@@ -240,7 +240,11 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
                 childinfo['title'] = child.display_name_with_default_escaped
             contents.append(childinfo)
 
-        next_url = self._compute_next_url(self.location, parent_module, context)
+        next_url = _compute_next_url(
+            self.location,
+            parent_module,
+            context['get_redirect_url'],
+        ) if context.get('get_redirect_url') else None
 
         params = {
             'items': contents,
@@ -259,25 +263,6 @@ class SequenceModule(SequenceFields, ProctoringFields, XModule):
 
         # Get all descendant XBlock types and counts
         return fragment
-
-    def _compute_next_url(self, child_location, parent_module, context):
-        """
-        Returns the url for the next module after this sequence.
-        """
-        if not context.get('get_redirect_url'):
-            return None
-
-        index_in_parent = parent_module.children.index(child_location)
-        if index_in_parent + 1 < len(parent_module.children):
-            next_module_location = parent_module.children[index_in_parent + 1]
-            if next_module_location:
-                return context['get_redirect_url'](self.location.course_key, next_module_location, first_child=True)
-        else:
-            grandparent = parent_module.get_parent()
-            if grandparent:
-                return self._compute_next_url(parent_module.location, grandparent, context)
-
-        return None
 
     def _locations_in_subtree(self, node):
         """
@@ -477,3 +462,29 @@ class SequenceDescriptor(SequenceFields, ProctoringFields, MakoModuleDescriptor,
         xblock_body["content_type"] = "Sequence"
 
         return xblock_body
+
+
+def _compute_next_url(block_location, parent_block, get_redirect_url_func):
+    """
+    Returns the url for the next module after the given block.
+
+    Arguments:
+        block_location: Location of the block that is being navigated.
+        parent_block: Parent block of the given block.
+        get_redirect_url_func: Function that computes a redirect URL directly to
+            a block, given the block's location.
+    """
+    index_in_parent = parent_block.children.index(block_location)
+    if index_in_parent + 1 < len(parent_block.children):
+        next_module_location = parent_block.children[index_in_parent + 1]
+        if next_module_location:
+            return get_redirect_url_func(
+                block_location.course_key,
+                next_module_location,
+                first_child=True,
+            )
+    else:
+        grandparent = parent_block.get_parent()
+        if grandparent:
+            return _compute_next_url(parent_block.location, grandparent, get_redirect_url_func)
+    return None
