@@ -15,23 +15,27 @@ class TestMigrations(TransactionTestCase):
     migrate_to = None
     app = None
 
-    def setUp(self):
-        super(TestMigrations, self).setUp()
-        assert self.migrate_from and self.migrate_to, \
-            "TestCase '{}' must define migrate_from and migrate_from properties".format(type(self).__name__)
-        assert self.app, "app must be define in the TestCase"
-        self.most_recent_migration = MigrationRecorder.Migration.objects.filter(app=self.app).last().name
+    @classmethod
+    def setUpClass(cls):
+        """ Record most_recent_migration and data checking before tests start. """
+        super(TestMigrations, cls).setUpClass()
+        assert cls.migrate_from and cls.migrate_to, \
+            "TestCase '{}' must define migrate_from and migrate_from properties".format(type(cls).__name__)
+        assert cls.app, "app must be define in the TestCase"
+        cls.most_recent_migration = MigrationRecorder.Migration.objects.filter(app=cls.app).last().name
 
-    def tearDown(self):
-        """ Back to initial migration """
-        super(TestMigrations, self).tearDown()
-        call_command("migrate", self.app, self.most_recent_migration)
-        self._check_migration_state(self.most_recent_migration)
+    @classmethod
+    def tearDownClass(cls):
+        """ Back to most_recent_migration after excecuting all tests. """
+        super(TestMigrations, cls).tearDownClass()
+        call_command("migrate", cls.app, cls.most_recent_migration)
+        cls._check_migration_state(cls.app, cls.most_recent_migration)
 
-    def _check_migration_state(self, migration_name):
-        """ Veirfy the migration from djano migration table"""
-        migration_state = MigrationRecorder.Migration.objects.filter(app=self.app).last()
-        self.assertEqual(migration_state.name, migration_name)
+    @classmethod
+    def _check_migration_state(cls, app, migration_name):
+        """ Veirfy the migration from djano migration table. """
+        migration_state = MigrationRecorder.Migration.objects.filter(app=app).last()
+        assert (migration_state.name == migration_name), "Migrate to %s failed." % migration_name
 
     def execute_migration(self, migrate_from, migrate_to):
         """
@@ -55,8 +59,9 @@ class TestMigrations(TransactionTestCase):
     def migrate_forwards(self):
         """ Execute migration to forward state. """
         self.execute_migration(self.migrate_from, self.migrate_to)
+        TestMigrations._check_migration_state(self.app, self.migrate_to)
 
     def migrate_backwards(self):
         """ Execute migration to backward state. """
         call_command("migrate", self.app, self.migrate_from)
-        self._check_migration_state(self.migrate_from)
+        TestMigrations._check_migration_state(self.app, self.migrate_from)

@@ -19,13 +19,13 @@ class TestTextFields(TestMigrations):
     migrate_to = '0002_auto_20160208_0810'
     app = 'instructor_task'
     test_course_key = CourseKey.from_string('course-v1:edX+1.23x+test_course')
+    task_input = 'x' * 700
+    task_output = 'x' * 999
 
     def setUpBeforeMigration(self):
         """
         Setup before migration create InstructorTask model entry to verify after migration.
         """
-        self.task_input = 'x' * 250
-        self.task_output = 'x' * 999
         self.instructor = User.objects.create(username="instructor", email="instructor@edx.org")
         self.task = InstructorTask.create(
             self.test_course_key,
@@ -37,7 +37,7 @@ class TestTextFields(TestMigrations):
         self.task.task_output = self.task_output
         self.task.save_now()
 
-    def test_text_fields_migrated(self):
+    def test_text_fields_forward_migration(self):
         """
         Verify that data does not loss after migration when model field changes
         from CharField to TextField.
@@ -46,15 +46,16 @@ class TestTextFields(TestMigrations):
         task_after_migration = InstructorTask.objects.get(id=self.task.id)
         self.assertEqual(task_after_migration.task_input, json.dumps(self.task_input))
         self.assertEqual(task_after_migration.task_output, self.task_output)
+        self._test_migrated_backward()
 
-    def test_migrated_backward(self):
+    def _test_migrated_backward(self):
         """
-        Verify that migrate to backwards does not lose any data.
+        Verify that our data will not loss when migration move from 0002_auto_20160208_0810 to 0001_initial state.
         """
-        # When test start app is 0001_initial migration due to teardown moving app to forward at
-        # 0002_auto_20160208_0810 so that we can test migrate_backwards() back to some 0001_initial state.
-        self.migrate_forwards()  # move to 0002_auto_20160208_0810
-        self.migrate_backwards()  # will move back to 0001_initial
+        # Instructor_task app is now at 0002_auto_20160208_0810 migration using
+        # (migrate_forwards() at test_text_fields_migrated()), migrate_backwards() will move migration back to
+        # 0001_initial state using migrate_from class attribute.
+        self.migrate_backwards()
 
         task_after_backward_migration = InstructorTask.objects.get(id=self.task.id)
         self.assertEqual(task_after_backward_migration.task_input, json.dumps(self.task_input))
